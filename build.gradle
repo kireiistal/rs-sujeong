@@ -46,12 +46,18 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
+	// 테스트 관련 의존성
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.mockito:mockito-core'
+	testImplementation 'org.mockito:mockito-junit-jupiter'
+
+	// H2 데이터베이스 (테스트용)
+	testRuntimeOnly 'com.h2database:h2'
+
+	// AssertJ 추가 (선택사항, 더 유연한 assertions를 위해)
+	testImplementation 'org.assertj:assertj-core'
 }
 
-//
-//tasks.named('test') {
-//	useJUnitPlatform()
-//	jvmArgs '-Xshare:off'
-//}
-
+tasks.named('test') {
+	useJUnitPlatform()
+}
