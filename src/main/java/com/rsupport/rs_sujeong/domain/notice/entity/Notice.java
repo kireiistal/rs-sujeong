@@ -75,10 +75,6 @@ public class Notice {
         this.viewCount += 1;
     }
 
-    public void markAsDeleted() {
-        this.isDeleted = true;
-    }
-
     public void addFile(NoticeFile file) {
         this.files.add(file);
         file.setNotice(this);

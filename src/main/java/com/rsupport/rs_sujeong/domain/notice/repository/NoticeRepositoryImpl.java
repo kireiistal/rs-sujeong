@@ -1,6 +1,5 @@
 package com.rsupport.rs_sujeong.domain.notice.repository;
 
-
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
@@ -12,13 +11,12 @@ import com.rsupport.rs_sujeong.domain.notice.entity.Notice;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 import static com.rsupport.rs_sujeong.domain.notice.entity.QNotice.notice;
 
@@ -30,51 +28,74 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
 
     @Override
     public Page<Notice> search(NoticeSearchCondition condition, Pageable pageable) {
-        BooleanBuilder builder = queryBuilder(condition);
-        JPAQuery<Notice> query = queryFactory
+        // 조건 생성
+        BooleanBuilder whereCondition = createWhereCondition(condition);
+
+        // 메인 쿼리
+        List<Notice> content = queryFactory
                 .selectFrom(notice)
-                .where(builder)
-                .orderBy(notice.createdAt.desc())
+                .where(whereCondition)
                 .offset(pageable.getOffset())
-                .limit(pageable.getPageSize());
+                .limit(pageable.getPageSize())
+                .orderBy(createOrderSpecifiers(pageable))
+                .fetch();
 
-        PathBuilder<Notice> orderBy = new PathBuilder<>(Notice.class, notice.getMetadata());
-        for (Sort.Order order : pageable.getSort()) {
-            query.orderBy(new OrderSpecifier(order.isAscending() ? Order.ASC : Order.DESC, orderBy.get(order.getProperty())));
-        }
-
+        // 카운트 쿼리
         JPAQuery<Long> countQuery = queryFactory
                 .select(notice.count())
                 .from(notice)
-                .where(builder);
+                .where(whereCondition);
 
-        return PageableExecutionUtils.getPage(query.fetch(), pageable, countQuery::fetchOne);
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
-
-    private BooleanBuilder queryBuilder(NoticeSearchCondition condition) {
+    private BooleanBuilder createWhereCondition(NoticeSearchCondition condition) {
         BooleanBuilder builder = new BooleanBuilder();
-        if (StringUtils.hasText(condition.getFilter())) {
-            if (NoticeSearchCondition.SearchType.TITLE == condition.getSearchType()) {
-                builder.and(notice.title.containsIgnoreCase(condition.getFilter()));
-            } else {
-                builder.and(notice.title.containsIgnoreCase(condition.getFilter()).or(notice.content.containsIgnoreCase(condition.getFilter())));
-            }
+
+        // 검색어 필터링
+        applySearchFilter(builder, condition);
+
+        // 날짜 필터링
+        applyDateFilter(builder, condition);
+
+        return builder;
+    }
+
+    private void applySearchFilter(BooleanBuilder builder, NoticeSearchCondition condition) {
+        if (!StringUtils.hasText(condition.getFilter())) {
+            return;
         }
 
-        LocalDate startDate = condition.getStartDate();
-        LocalDate endDate = condition.getEndDate();
+        if (NoticeSearchCondition.SearchType.TITLE == condition.getSearchType()) {
+            builder.and(notice.title.containsIgnoreCase(condition.getFilter()));
+        } else {
+            builder.and(
+                    notice.title.containsIgnoreCase(condition.getFilter())
+                            .or(notice.content.containsIgnoreCase(condition.getFilter()))
+            );
+        }
+    }
 
-        if (startDate != null) {
-            LocalDateTime startDateTime = startDate.atStartOfDay();
+    private void applyDateFilter(BooleanBuilder builder, NoticeSearchCondition condition) {
+        if (condition.getStartDate() != null) {
+            LocalDateTime startDateTime = condition.getStartDate().atStartOfDay();
             builder.and(notice.createdAt.goe(startDateTime));
         }
 
-        if (endDate != null) {
-            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+        if (condition.getEndDate() != null) {
+            LocalDateTime endDateTime = condition.getEndDate().atTime(LocalTime.MAX);
             builder.and(notice.createdAt.loe(endDateTime));
         }
+    }
 
-        return builder;
+    private OrderSpecifier<?>[] createOrderSpecifiers(Pageable pageable) {
+        PathBuilder<Notice> entityPath = new PathBuilder<>(Notice.class, "notice");
+
+        return pageable.getSort().stream()
+                .map(order -> new OrderSpecifier(
+                        order.isAscending() ? Order.ASC : Order.DESC,
+                        entityPath.get(order.getProperty())
+                ))
+                .toArray(OrderSpecifier[]::new);
     }
 }

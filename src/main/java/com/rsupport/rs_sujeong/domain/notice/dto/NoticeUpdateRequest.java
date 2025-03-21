@@ -1,5 +1,7 @@
 package com.rsupport.rs_sujeong.domain.notice.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -34,4 +36,10 @@ public class NoticeUpdateRequest {
 
     @Builder.Default
     private List<Long> deleteFileIds = new ArrayList<>();
+
+    @JsonIgnore
+    @AssertTrue(message = "공지 시작일시는 종료일시보다 이전이어야 합니다.")
+    public boolean isStartDateBeforeEndDate() {
+        return startDate != null && endDate != null && startDate.isBefore(endDate);
+    }
 }
