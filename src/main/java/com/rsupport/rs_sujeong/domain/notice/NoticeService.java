@@ -8,6 +8,8 @@ import com.rsupport.rs_sujeong.domain.notice.repository.NoticeRepository;
 import com.rsupport.rs_sujeong.exception.NoticeNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,12 +35,14 @@ public class NoticeService {
         noticeRepository.save(notice);
     }
 
+    @Cacheable(value = "noticeList", key = "#condition.toString() + #pageable.toString()")
     @Transactional(readOnly = true)
     public Page<NoticeResponse> searchNotices(NoticeSearchCondition condition, Pageable pageable) {
         return noticeRepository.search(condition, pageable)
                 .map(NoticeResponse::from);
     }
 
+    @CacheEvict(value = {"noticeList"}, allEntries = true)
     @Transactional
     public NoticeDetailResponse searchOne(Long noticeId) {
         Notice notice = findNoticeById(noticeId);
@@ -46,6 +50,7 @@ public class NoticeService {
         return NoticeDetailResponse.from(notice);
     }
 
+    @CacheEvict(value = {"noticeList"}, allEntries = true)
     @Transactional
     public void updateNotice(Long noticeId, NoticeUpdateRequest request, List<MultipartFile> files) {
         Notice notice = findNoticeById(noticeId);
@@ -65,6 +70,7 @@ public class NoticeService {
         noticeRepository.save(notice);
     }
 
+    @CacheEvict(value = {"noticeList"}, allEntries = true)
     @Transactional
     public void deleteNotice(Long noticeId) {
         Notice notice = findNoticeById(noticeId);

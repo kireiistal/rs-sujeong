@@ -25,4 +25,12 @@ public class NoticeSearchCondition {
     public enum SearchType {
         TITLE, TITLE_CONTENT
     }
+
+    @Override
+    public String toString() {
+        return "filter=" + (filter == null ? "" : filter) +
+                ";searchType=" + (searchType == null ? "" : searchType) +
+                ";startDate=" + (startDate == null ? "" : startDate) +
+                ";endDate=" + (endDate == null ? "" : endDate);
+    }
 }
